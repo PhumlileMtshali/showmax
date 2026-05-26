@@ -270,11 +270,11 @@ The application is designed to deploy on **Microsoft Azure**:
 
 ## 📄 License
 
-This project is built for academic purposes as a university assignment.
+This project is built for academic purposes.
 
 ---
 
 ## 👤 Author
 
 **Phumlile Mtshali**
-University Project — 2026
+2026
