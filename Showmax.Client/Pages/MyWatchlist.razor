@@ -1,0 +1,110 @@
+﻿@page "/watchlist"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<NavBar />
+
+<div style="padding-top:80px; min-height:100vh; background:#0a0a0a;">
+
+    <div style="padding:40px 60px 20px;">
+        <h1 style="font-size:2rem; font-weight:900; margin-bottom:8px;">My Watchlist</h1>
+        <p style="color:#aaa;">Content you've saved to watch later</p>
+    </div>
+
+    @if (!isLoggedIn)
+    {
+        <div class="no-content" style="margin-top:60px;">
+            <i class="fas fa-lock" style="font-size:3rem; color:#e50914; margin-bottom:16px;"></i>
+            <p style="margin-bottom:16px;">Sign in to see your watchlist</p>
+            <a href="/login" class="btn-showmax">Sign In</a>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div style="display:flex; justify-content:center; padding:60px;">
+            <div class="spinner"></div>
+        </div>
+    }
+    else if (watchlist == null || !watchlist.Any())
+    {
+        <div class="no-content" style="margin-top:60px;">
+            <i class="fas fa-bookmark" style="font-size:3rem; color:#333; margin-bottom:16px;"></i>
+            <p style="margin-bottom:8px;">Your watchlist is empty</p>
+            <p style="color:#555; font-size:14px; margin-bottom:24px;">
+                Add movies and series to watch later
+            </p>
+            <a href="/" class="btn-showmax">Browse Content</a>
+        </div>
+    }
+    else
+    {
+        <div style="padding:0 60px 60px;">
+            <p style="color:#aaa; margin-bottom:24px;">@watchlist.Count item@(watchlist.Count != 1 ? "s" : "")</p>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:16px;">
+                @foreach (var item in watchlist)
+                {
+                    <div style="position:relative;">
+                        <div class="content-card" @onclick="() => GoToContent(item.ContentId)">
+                            <span class="card-badge">@item.Type.ToUpper()</span>
+                            <img src="@item.ThumbnailUrl" alt="@item.Title" />
+                            <div class="card-info">
+                                <div class="card-title">@item.Title</div>
+                                <div class="card-meta">@item.ReleaseYear • @item.Genre • @item.Rating</div>
+                            </div>
+                        </div>
+                        <button @onclick="() => RemoveFromWatchlist(item.ContentId)"
+                                style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.8);
+                                               border:1px solid #333; color:white; width:32px; height:32px;
+                                               border-radius:50%; cursor:pointer; font-size:12px;
+                                               display:flex; align-items:center; justify-content:center;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<WatchlistDto>? watchlist;
+    private bool isLoading = true;
+    private bool isLoggedIn = false;
+    private string token = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        token = await JS.InvokeAsync<string?>("localStorage.getItem", "token") ?? "";
+        isLoggedIn = !string.IsNullOrEmpty(token);
+
+        if (isLoggedIn)
+        {
+            try
+            {
+                watchlist = await ApiService.GetWatchlistAsync(token);
+            }
+            catch (Exception) { }
+        }
+
+        isLoading = false;
+    }
+
+    private async Task RemoveFromWatchlist(int contentId)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Remove from watchlist?");
+        if (!confirmed) return;
+
+        var success = await ApiService.RemoveFromWatchlistAsync(contentId, token);
+        if (success)
+        {
+            watchlist = watchlist?.Where(w => w.ContentId != contentId).ToList();
+            StateHasChanged();
+        }
+    }
+
+    private void GoToContent(int id)
+    {
+        Nav.NavigateTo($"/content/{id}");
+    }
+}

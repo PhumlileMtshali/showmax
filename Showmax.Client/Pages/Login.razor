@@ -1,0 +1,79 @@
+﻿@page "/login"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="auth-container">
+    <div class="auth-box">
+        <div class="logo" style="font-size:1.8rem; margin-bottom:24px;">SHOWMAX</div>
+        <h2>Welcome Back</h2>
+        <p>Sign in to continue watching</p>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+
+        <div>
+            <label class="form-label-showmax">Email Address</label>
+            <input class="form-control-showmax" type="email" placeholder="you@example.com"
+                   @bind="loginDto.Email" />
+
+            <label class="form-label-showmax">Password</label>
+            <input class="form-control-showmax" type="password" placeholder="Your password"
+                   @bind="loginDto.Password" />
+
+            <button class="btn-showmax" style="width:100%; margin-top:8px;"
+                    @onclick="HandleLogin" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Sign In</span>
+                }
+            </button>
+        </div>
+
+        <p style="text-align:center; margin-top:24px; color:#aaa; font-size:14px;">
+            Don't have an account?
+            <a href="/register" class="auth-link">Sign up</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    private LoginDto loginDto = new();
+    private string errorMessage = "";
+    private bool isLoading = false;
+
+    private async Task HandleLogin()
+    {
+        errorMessage = "";
+        isLoading = true;
+
+        var result = await ApiService.LoginAsync(loginDto);
+
+        if (result != null && result.IsSuccess)
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "token", result.Token);
+            await JS.InvokeVoidAsync("localStorage.setItem", "fullName", result.FullName);
+
+            // Decode token to get role
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(result.Token);
+            var role = jwt.Claims.FirstOrDefault(c => c.Type == "role" ||
+                       c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value ?? "User";
+            await JS.InvokeVoidAsync("localStorage.setItem", "role", role);
+
+            Nav.NavigateTo("/", forceLoad: true);
+        }
+        else
+        {
+            errorMessage = result?.Message ?? "Invalid email or password.";
+        }
+
+        isLoading = false;
+    }
+}

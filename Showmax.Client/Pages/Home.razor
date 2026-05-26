@@ -1,0 +1,121 @@
+﻿@page "/"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<NavBar />
+
+@if (featuredContent != null)
+{
+    <div class="hero" style="background-image: linear-gradient(to right, rgba(0,0,0,0.9) 40%, transparent), url('@featuredContent.ThumbnailUrl');">
+        <div class="hero-content">
+            <span class="hero-badge">@featuredContent.Type.ToUpper()</span>
+            <h1 class="hero-title">@featuredContent.Title</h1>
+            <p class="hero-synopsis">@featuredContent.Synopsis</p>
+            <a href="/watch/@featuredContent.Id" class="btn-showmax">
+                <i class="fas fa-play"></i> Watch Now
+            </a>
+            <a href="/content/@featuredContent.Id" class="btn-outline">
+                <i class="fas fa-info-circle"></i> More Info
+            </a>
+        </div>
+    </div>
+}
+
+<!-- Movies Row -->
+<div class="content-section" style="margin-top: @(featuredContent != null ? "0" : "80px")">
+    <h2 class="section-title">🎬 Movies</h2>
+    @if (movies == null)
+    {
+        <p style="color:#666;">Loading...</p>
+    }
+    else if (!movies.Any())
+    {
+        <div class="no-content">
+            <i class="fas fa-film"></i>
+            <p>No movies available yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="content-row">
+            @foreach (var item in movies)
+            {
+                <div class="content-card" @onclick="() => GoToContent(item.Id)">
+                    <span class="card-badge">MOVIE</span>
+                    <img src="@item.ThumbnailUrl" alt="@item.Title" />
+                    <div class="card-info">
+                        <div class="card-title">@item.Title</div>
+                        <div class="card-meta">@item.ReleaseYear • @item.Genre • @item.Rating</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Series Row -->
+<div class="content-section">
+    <h2 class="section-title">📺 Series</h2>
+    @if (series == null)
+    {
+        <p style="color:#666;">Loading...</p>
+    }
+    else if (!series.Any())
+    {
+        <div class="no-content">
+            <i class="fas fa-tv"></i>
+            <p>No series available yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="content-row">
+            @foreach (var item in series)
+            {
+                <div class="content-card" @onclick="() => GoToContent(item.Id)">
+                    <span class="card-badge">SERIES</span>
+                    <img src="@item.ThumbnailUrl" alt="@item.Title" />
+                    <div class="card-info">
+                        <div class="card-title">@item.Title</div>
+                        <div class="card-meta">@item.ReleaseYear • @item.Genre • @item.Rating</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+
+@code {
+    private List<ContentDto>? movies;
+    private List<ContentDto>? series;
+    private ContentDto? featuredContent;
+
+
+    protected override async Task OnInitializedAsync()
+    {   
+        // Redirect non-logged in users to landing page
+        var token = await JS.InvokeAsync<string?>("localStorage.getItem", "token");
+        if (string.IsNullOrEmpty(token))
+        {
+            Nav.NavigateTo("/landing");
+            return;
+        }
+        try
+        {
+            movies = await ApiService.GetContentByTypeAsync("Movie");
+            series = await ApiService.GetContentByTypeAsync("Series");
+            featuredContent = series?.FirstOrDefault() ?? movies?.FirstOrDefault();
+        }
+        catch (Exception)
+        {
+            // Server not ready yet, will show empty state
+        }
+    }
+
+    private void GoToContent(int id)
+    {
+        Nav.NavigateTo($"/content/{id}");
+    }
+}

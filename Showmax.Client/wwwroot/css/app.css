@@ -1,0 +1,379 @@
+/* Global */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #0a0a0a;
+    color: #ffffff;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Loading screen */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: #0a0a0a;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid #333;
+    border-top-color: #e50914;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-top: 20px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Logo */
+.logo {
+    color: #e50914;
+    font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: 4px;
+}
+
+/* Navbar */
+.showmax-nav {
+    background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    transition: background 0.3s;
+}
+
+    .showmax-nav.scrolled {
+        background: #0a0a0a;
+    }
+
+.nav-links {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+}
+
+    .nav-links a {
+        color: #ccc;
+        text-decoration: none;
+        font-size: 14px;
+        transition: color 0.2s;
+    }
+
+        .nav-links a:hover {
+            color: #fff;
+        }
+
+/* Hero */
+.hero {
+    height: 85vh;
+    background: linear-gradient(to right, rgba(0,0,0,0.9) 40%, transparent), url('https://via.placeholder.com/1920x1080/1a1a2e/ffffff?text=') center/cover no-repeat;
+    display: flex;
+    align-items: center;
+    padding: 0 60px;
+    margin-top: 0;
+}
+
+.hero-content {
+    max-width: 550px;
+}
+
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 16px;
+}
+
+.hero-synopsis {
+    font-size: 1.1rem;
+    color: #ccc;
+    margin-bottom: 28px;
+    line-height: 1.6;
+}
+
+.hero-badge {
+    background: #e50914;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+
+/* Buttons */
+.btn-showmax {
+    background: #e50914;
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+    .btn-showmax:hover {
+        background: #b20710;
+        color: white;
+    }
+
+.btn-outline {
+    background: transparent;
+    color: white;
+    border: 2px solid white;
+    padding: 12px 32px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 12px;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s;
+}
+
+    .btn-outline:hover {
+        background: white;
+        color: black;
+    }
+
+/* Content rows */
+.content-section {
+    padding: 40px 60px;
+}
+
+.section-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #fff;
+}
+
+.content-row {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: #e50914 #333;
+}
+
+/* Content cards */
+.content-card {
+    min-width: 200px;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    position: relative;
+    background: #1a1a1a;
+    flex-shrink: 0;
+}
+
+    .content-card:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 30px rgba(229, 9, 20, 0.3);
+        z-index: 10;
+    }
+
+    .content-card img {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        display: block;
+    }
+
+.card-info {
+    padding: 10px;
+    background: #1a1a1a;
+}
+
+.card-title {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-meta {
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 4px;
+}
+
+.card-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: #e50914;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+
+/* Auth pages */
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a0000 100%);
+}
+
+.auth-box {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 48px;
+    width: 100%;
+    max-width: 420px;
+}
+
+    .auth-box h2 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .auth-box p {
+        color: #aaa;
+        margin-bottom: 32px;
+    }
+
+.form-control-showmax {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: white;
+    padding: 12px 16px;
+    width: 100%;
+    font-size: 15px;
+    margin-bottom: 16px;
+    transition: border 0.2s;
+}
+
+    .form-control-showmax:focus {
+        outline: none;
+        border-color: #e50914;
+        background: rgba(255,255,255,0.1);
+    }
+
+    .form-control-showmax::placeholder {
+        color: #666;
+    }
+
+.form-label-showmax {
+    font-size: 13px;
+    color: #aaa;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.auth-link {
+    color: #e50914;
+    text-decoration: none;
+}
+
+    .auth-link:hover {
+        text-decoration: underline;
+    }
+
+.error-message {
+    background: rgba(229, 9, 20, 0.15);
+    border: 1px solid #e50914;
+    border-radius: 6px;
+    padding: 12px;
+    color: #ff6b6b;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.success-message {
+    background: rgba(0, 200, 100, 0.15);
+    border: 1px solid #00c864;
+    border-radius: 6px;
+    padding: 12px;
+    color: #00c864;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+/* Search bar */
+.search-container {
+    padding: 20px 60px;
+    background: #111;
+}
+
+.search-input {
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: white;
+    padding: 12px 20px;
+    width: 100%;
+    max-width: 500px;
+    font-size: 15px;
+}
+
+    .search-input:focus {
+        outline: none;
+        border-color: #e50914;
+    }
+
+/* No content */
+.no-content {
+    text-align: center;
+    padding: 60px;
+    color: #666;
+}
+
+    .no-content i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+    }
+
+/* Fix select dropdown on Windows */
+select.form-control-showmax {
+    background-color: #222 !important;
+    color: #ffffff !important;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+/* Hide Blazor error UI */
+#blazor-error-ui {
+    display: none !important;
+}

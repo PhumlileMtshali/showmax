@@ -1,0 +1,467 @@
+﻿@page "/admin"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<NavBar />
+
+<div style="padding-top:80px; min-height:100vh; background:#0a0a0a;">
+
+    @if (!isAdmin)
+    {
+        <div class="no-content" style="margin-top:100px;">
+            <i class="fas fa-lock" style="font-size:3rem; color:#e50914;"></i>
+            <p style="margin-top:16px;">Access Denied. Admins only.</p>
+            <a href="/" class="btn-showmax" style="margin-top:16px;">Go Home</a>
+        </div>
+    }
+    else
+    {
+        <div style="padding:40px 60px 20px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h1 style="font-size:2rem; font-weight:900;">Admin Panel</h1>
+                <p style="color:#aaa;">Manage your Showmax content</p>
+            </div>
+            <button class="btn-showmax" @onclick="() => showAddForm = true">
+                <i class="fas fa-plus"></i> Add Content
+            </button>
+        </div>
+
+        @if (stats != null)
+        {
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+                                gap:16px; padding:0 60px 40px;">
+                <div style="background:#1a1a1a; padding:20px; border-radius:8px; border-left:4px solid #e50914;">
+                    <div style="color:#aaa; font-size:12px; text-transform:uppercase;">Total Content</div>
+                    <div style="font-size:2rem; font-weight:900; margin-top:4px;">@stats.TotalContent</div>
+                </div>
+                <div style="background:#1a1a1a; padding:20px; border-radius:8px; border-left:4px solid #e50914;">
+                    <div style="color:#aaa; font-size:12px; text-transform:uppercase;">Movies</div>
+                    <div style="font-size:2rem; font-weight:900; margin-top:4px;">@stats.TotalMovies</div>
+                </div>
+                <div style="background:#1a1a1a; padding:20px; border-radius:8px; border-left:4px solid #e50914;">
+                    <div style="color:#aaa; font-size:12px; text-transform:uppercase;">Series</div>
+                    <div style="font-size:2rem; font-weight:900; margin-top:4px;">@stats.TotalSeries</div>
+                </div>
+                <div style="background:#1a1a1a; padding:20px; border-radius:8px; border-left:4px solid #e50914;">
+                    <div style="color:#aaa; font-size:12px; text-transform:uppercase;">Users</div>
+                    <div style="font-size:2rem; font-weight:900; margin-top:4px;">@stats.TotalUsers</div>
+                </div>
+                <div style="background:#1a1a1a; padding:20px; border-radius:8px; border-left:4px solid #e50914;">
+                    <div style="color:#aaa; font-size:12px; text-transform:uppercase;">Subscriptions</div>
+                    <div style="font-size:2rem; font-weight:900; margin-top:4px;">@stats.TotalSubscriptions</div>
+                </div>
+            </div>
+        }
+
+        @if (showAddForm)
+        {
+            <div style="position:fixed; inset:0; background:rgba(0,0,0,0.85);
+                                display:flex; align-items:center; justify-content:center; z-index:9999;">
+                <div style="background:#1a1a1a; border-radius:12px; padding:40px;
+                                    width:100%; max-width:600px; max-height:90vh; overflow-y:auto;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+                        <h2 style="font-size:1.4rem; font-weight:900;">
+                            @(editingId.HasValue ? "Edit Content" : "Add New Content")
+                        </h2>
+                        <button @onclick="CloseForm"
+                                style="background:none; border:none; color:#aaa; cursor:pointer; font-size:20px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <div class="error-message">@formError</div>
+                    }
+                    @if (!string.IsNullOrEmpty(formSuccess))
+                    {
+                        <div class="success-message">@formSuccess</div>
+                    }
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                        <div style="grid-column:1/-1;">
+                            <label class="form-label-showmax">Title</label>
+                            <input class="form-control-showmax" placeholder="Content title"
+                                   @bind="form.Title" />
+                        </div>
+                        <div style="grid-column:1/-1;">
+                            <label class="form-label-showmax">Synopsis</label>
+                            <textarea class="form-control-showmax" placeholder="Brief description..."
+                                      style="height:80px; resize:vertical;"
+                                      @bind="form.Synopsis"></textarea>
+                        </div>
+                        <div>
+                            <label class="form-label-showmax">Type</label>
+                            <select class="form-control-showmax" @bind="form.Type">
+                                <option value="">Select type</option>
+                                <option value="Movie">Movie</option>
+                                <option value="Series">Series</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label-showmax">Genre</label>
+                            <select class="form-control-showmax" @bind="form.Genre">
+                                <option value="">Select genre</option>
+                                <option value="Action">Action</option>
+                                <option value="Drama">Drama</option>
+                                <option value="Comedy">Comedy</option>
+                                <option value="Thriller">Thriller</option>
+                                <option value="Horror">Horror</option>
+                                <option value="Romance">Romance</option>
+                                <option value="Documentary">Documentary</option>
+                                <option value="Animation">Animation</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label-showmax">Language</label>
+                            <input class="form-control-showmax" placeholder="e.g. English"
+                                   @bind="form.Language" />
+                        </div>
+                        <div>
+                            <label class="form-label-showmax">Release Year</label>
+                            <input class="form-control-showmax" type="number" placeholder="e.g. 2024"
+                                   @bind="form.ReleaseYear" />
+                        </div>
+                        <div>
+                            <label class="form-label-showmax">Rating</label>
+                            <select class="form-control-showmax" @bind="form.Rating">
+                                <option value="">Select rating</option>
+                                <option value="PG">PG</option>
+                                <option value="13+">13+</option>
+                                <option value="16+">16+</option>
+                                <option value="18+">18+</option>
+                            </select>
+                        </div>
+
+                        <div style="grid-column:1/-1;">
+                            <label class="form-label-showmax">Thumbnail URL (optional — or upload file below)</label>
+                            <input class="form-control-showmax" placeholder="https://..."
+                                   @bind="form.ThumbnailUrl" />
+                        </div>
+
+                        <div style="grid-column:1/-1;">
+                            <label class="form-label-showmax">Video URL (optional — or upload file below)</label>
+                            <input class="form-control-showmax" placeholder="https://..."
+                                   @bind="form.VideoUrl" />
+                        </div>
+
+                        <div style="grid-column:1/-1;">
+                            <label class="form-label-showmax">Thumbnail Image (JPG/PNG, max 5MB)</label>
+                            <InputFile OnChange="@(e => thumbnailFile = e.File)"
+                                       accept="image/*"
+                                       style="background:#222; border:1px solid #333; border-radius:8px;
+                                                      color:white; padding:10px; width:100%;" />
+                            @if (!string.IsNullOrEmpty(form.ThumbnailUrl))
+                            {
+                                <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                                    <img src="@form.ThumbnailUrl" style="width:60px; height:90px;
+                                                     object-fit:cover; border-radius:4px;" />
+                                    <span style="color:#aaa; font-size:12px;">Current thumbnail</span>
+                                </div>
+                            }
+                            @if (thumbnailFile != null)
+                            {
+                                <p style="color:#00c864; font-size:12px; margin-top:4px;">
+                                    <i class="fas fa-check"></i> @thumbnailFile.Name selected
+                                </p>
+                            }
+                        </div>
+
+                        <div style="grid-column:1/-1;">
+                            <label class="form-label-showmax">Video File (MP4, max 500MB)</label>
+                            <InputFile OnChange="@(e => videoFile = e.File)"
+                                       accept="video/*"
+                                       style="background:#222; border:1px solid #333; border-radius:8px;
+                                                      color:white; padding:10px; width:100%;" />
+                            @if (!string.IsNullOrEmpty(form.VideoUrl))
+                            {
+                                <p style="color:#aaa; font-size:12px; margin-top:4px;">
+                                    <i class="fas fa-film"></i> Current video exists
+                                </p>
+                            }
+                            @if (videoFile != null)
+                            {
+                                <p style="color:#00c864; font-size:12px; margin-top:4px;">
+                                    <i class="fas fa-check"></i> @videoFile.Name selected
+                                    (@((videoFile.Size / 1024 / 1024).ToString("0.0")) MB)
+                                </p>
+                            }
+                        </div>
+                    </div>
+
+                    <button class="btn-showmax" style="width:100%; margin-top:24px;"
+                            @onclick="HandleSubmit" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span><i class="fas fa-spinner fa-spin"></i> Saving... this may take a moment</span>
+                        }
+                        else
+                        {
+                            <span>@(editingId.HasValue ? "Update Content" : "Add Content")</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        }
+
+        <div style="padding:0 60px 60px;">
+            <h2 class="section-title">All Content (@(contentList?.Count ?? 0))</h2>
+            @if (contentList == null)
+            {
+                <div style="display:flex; justify-content:center; padding:40px;">
+                    <div class="spinner"></div>
+                </div>
+            }
+            else if (!contentList.Any())
+            {
+                <div class="no-content">
+                    <i class="fas fa-film"></i>
+                    <p>No content yet. Add your first movie or series!</p>
+                </div>
+            }
+            else
+            {
+                <div style="background:#111; border-radius:8px; overflow:hidden;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#1a1a1a;">
+                                <th style="padding:16px; text-align:left; color:#aaa; font-size:12px; text-transform:uppercase;">Thumbnail</th>
+                                <th style="padding:16px; text-align:left; color:#aaa; font-size:12px; text-transform:uppercase;">Title</th>
+                                <th style="padding:16px; text-align:left; color:#aaa; font-size:12px; text-transform:uppercase;">Type</th>
+                                <th style="padding:16px; text-align:left; color:#aaa; font-size:12px; text-transform:uppercase;">Genre</th>
+                                <th style="padding:16px; text-align:left; color:#aaa; font-size:12px; text-transform:uppercase;">Year</th>
+                                <th style="padding:16px; text-align:left; color:#aaa; font-size:12px; text-transform:uppercase;">Video</th>
+                                <th style="padding:16px; text-align:left; color:#aaa; font-size:12px; text-transform:uppercase;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in contentList)
+                            {
+                                <tr style="border-top:1px solid #222;">
+                                    <td style="padding:12px 16px;">
+                                        <img src="@item.ThumbnailUrl" style="width:40px; height:60px;
+                                                         object-fit:cover; border-radius:4px;" />
+                                    </td>
+                                    <td style="padding:12px 16px; font-weight:600;">@item.Title</td>
+                                    <td style="padding:12px 16px;">
+                                        <span style="background:@(item.Type == "Movie" ? "#1a003a" : "#001a3a");
+                                                                 color:@(item.Type == "Movie" ? "#cc88ff" : "#88ccff");
+                                                                 padding:3px 10px; border-radius:4px; font-size:12px;">
+                                            @item.Type
+                                        </span>
+                                    </td>
+                                    <td style="padding:12px 16px; color:#aaa;">@item.Genre</td>
+                                    <td style="padding:12px 16px; color:#aaa;">@item.ReleaseYear</td>
+                                    <td style="padding:12px 16px;">
+                                        @if (!string.IsNullOrEmpty(item.VideoUrl))
+                                        {
+                                            <span style="color:#00c864; font-size:12px;">
+                                                <i class="fas fa-check-circle"></i> Ready
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#e50914; font-size:12px;">
+                                                <i class="fas fa-times-circle"></i> Missing
+                                            </span>
+                                        }
+                                    </td>
+                                    <td style="padding:12px 16px;">
+                                        <button @onclick="() => EditContent(item)"
+                                                style="background:#333; border:none; color:white;
+                                                                   padding:6px 14px; border-radius:4px; cursor:pointer;
+                                                                   margin-right:8px; font-size:12px;">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <button @onclick="() => DeleteContent(item.Id)"
+                                                style="background:#e50914; border:none; color:white;
+                                                                   padding:6px 14px; border-radius:4px; cursor:pointer;
+                                                                   font-size:12px;">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool isAdmin = false;
+    private string token = "";
+    private List<ContentDto>? contentList;
+    private AdminStatsDto? stats;
+    private bool showAddForm = false;
+    private bool isSubmitting = false;
+    private string formError = "";
+    private string formSuccess = "";
+    private int? editingId = null;
+
+    private CreateContentDto form = new();
+    private IBrowserFile? thumbnailFile;
+    private IBrowserFile? videoFile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        token = await JS.InvokeAsync<string?>("localStorage.getItem", "token") ?? "";
+
+        if (string.IsNullOrEmpty(token))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            contentList = await ApiService.GetAdminContentAsync(token);
+            isAdmin = true;
+            await LoadStats();
+        }
+        catch (Exception)
+        {
+            isAdmin = false;
+        }
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            var result = await ApiService.GetAdminStatsAsync(token);
+            if (result != null)
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(result);
+                stats = System.Text.Json.JsonSerializer.Deserialize<AdminStatsDto>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+        }
+        catch (Exception) { }
+    }
+
+    private void EditContent(ContentDto item)
+    {
+        editingId = item.Id;
+        form = new CreateContentDto
+        {
+            Title = item.Title,
+            Synopsis = item.Synopsis,
+            Type = item.Type,
+            Genre = item.Genre,
+            Language = item.Language,
+            ReleaseYear = item.ReleaseYear,
+            Rating = item.Rating,
+            ThumbnailUrl = item.ThumbnailUrl,
+            VideoUrl = item.VideoUrl
+        };
+        showAddForm = true;
+    }
+
+    private void CloseForm()
+    {
+        showAddForm = false;
+        editingId = null;
+        form = new();
+        formError = "";
+        formSuccess = "";
+        thumbnailFile = null;
+        videoFile = null;
+    }
+
+    private async Task HandleSubmit()
+    {
+        formError = "";
+        formSuccess = "";
+
+        if (string.IsNullOrEmpty(form.Title) || string.IsNullOrEmpty(form.Type) ||
+            string.IsNullOrEmpty(form.Genre))
+        {
+            formError = "Title, Type and Genre are required.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var formData = new MultipartFormDataContent();
+            formData.Add(new StringContent(form.Title), "Title");
+            formData.Add(new StringContent(form.Synopsis ?? ""), "Synopsis");
+            formData.Add(new StringContent(form.Type), "Type");
+            formData.Add(new StringContent(form.Genre), "Genre");
+            formData.Add(new StringContent(form.Language ?? ""), "Language");
+            formData.Add(new StringContent(form.ReleaseYear.ToString()), "ReleaseYear");
+            formData.Add(new StringContent(form.Rating ?? ""), "Rating");
+            formData.Add(new StringContent(form.ThumbnailUrl ?? ""), "ThumbnailUrl");
+            formData.Add(new StringContent(form.VideoUrl ?? ""), "VideoUrl");
+
+            if (thumbnailFile != null)
+            {
+                var stream = thumbnailFile.OpenReadStream(5 * 1024 * 1024);
+                formData.Add(new StreamContent(stream), "thumbnail", thumbnailFile.Name);
+            }
+
+            if (videoFile != null)
+            {
+                var stream = videoFile.OpenReadStream(500 * 1024 * 1024);
+                formData.Add(new StreamContent(stream), "video", videoFile.Name);
+            }
+
+            HttpResponseMessage response;
+            if (editingId.HasValue)
+                response = await ApiService.UpdateContentAsync(editingId.Value, formData, token);
+            else
+                response = await ApiService.AddContentAsync(formData, token);
+
+            if (response.IsSuccessStatusCode)
+            {
+                formSuccess = editingId.HasValue ? "Content updated!" : "Content added successfully!";
+                contentList = await ApiService.GetAdminContentAsync(token);
+                await LoadStats();
+                await Task.Delay(1500);
+                CloseForm();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                formError = $"Failed to save. Server said: {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            formError = $"Error: {ex.Message}";
+        }
+
+        isSubmitting = false;
+    }
+
+    private async Task DeleteContent(int id)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this content?");
+        if (!confirmed) return;
+
+        try
+        {
+            var response = await ApiService.DeleteContentAsync(id, token);
+            if (response.IsSuccessStatusCode)
+            {
+                contentList = await ApiService.GetAdminContentAsync(token);
+                await LoadStats();
+            }
+        }
+        catch (Exception) { }
+    }
+
+    private class AdminStatsDto
+    {
+        public int TotalContent { get; set; }
+        public int TotalMovies { get; set; }
+        public int TotalSeries { get; set; }
+        public int TotalUsers { get; set; }
+        public int TotalSubscriptions { get; set; }
+    }
+}

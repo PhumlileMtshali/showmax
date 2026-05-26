@@ -1,0 +1,92 @@
+﻿@page "/register"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="auth-container">
+    <div class="auth-box">
+        <div class="logo" style="font-size:1.8rem; margin-bottom:24px;">SHOWMAX</div>
+        <h2>Create Account</h2>
+        <p>Start watching today</p>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="success-message">@successMessage</div>
+        }
+
+        <div>
+            <label class="form-label-showmax">Full Name</label>
+            <input class="form-control-showmax" placeholder="John Doe"
+                   @bind="registerDto.FullName" />
+
+            <label class="form-label-showmax">Email Address</label>
+            <input class="form-control-showmax" type="email" placeholder="you@example.com"
+                   @bind="registerDto.Email" />
+
+            <label class="form-label-showmax">Password</label>
+            <input class="form-control-showmax" type="password" placeholder="Min 6 characters"
+                   @bind="registerDto.Password" />
+
+            <button class="btn-showmax" style="width:100%; margin-top:8px;"
+                    @onclick="HandleRegister" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span>Creating account...</span>
+                }
+                else
+                {
+                    <span>Create Account</span>
+                }
+            </button>
+        </div>
+
+        <p style="text-align:center; margin-top:24px; color:#aaa; font-size:14px;">
+            Already have an account?
+            <a href="/login" class="auth-link">Sign in</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    private RegisterDto registerDto = new();
+    private string errorMessage = "";
+    private string successMessage = "";
+    private bool isLoading = false;
+
+    private async Task HandleRegister()
+    {
+        errorMessage = "";
+        successMessage = "";
+        isLoading = true;
+
+        var result = await ApiService.RegisterAsync(registerDto);
+
+        if (result != null && result.IsSuccess)
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "token", result.Token);
+            await JS.InvokeVoidAsync("localStorage.setItem", "fullName", result.FullName);
+            successMessage = "Account created! Redirecting...";
+            await Task.Delay(1500);
+            Nav.NavigateTo("/", forceLoad: true);
+        }
+        else
+        {
+            errorMessage = result?.Message ?? "Something went wrong. Please try again.";
+        }
+
+        isLoading = false;
+
+        // Decode token to get role
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(result.Token);
+        var role = jwt.Claims.FirstOrDefault(c => c.Type == "role" ||
+                   c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value ?? "User";
+        await JS.InvokeVoidAsync("localStorage.setItem", "role", role);
+    }
+
+}

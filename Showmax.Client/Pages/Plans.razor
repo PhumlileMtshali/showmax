@@ -1,0 +1,193 @@
+﻿@page "/plans"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<NavBar />
+
+<div style="padding-top:80px; min-height:100vh; background:#0a0a0a;">
+
+    <!-- Header -->
+    <div style="text-align:center; padding:60px 40px 40px;">
+        <h1 style="font-size:2.5rem; font-weight:900; margin-bottom:12px;">
+            Choose Your Plan
+        </h1>
+        <p style="color:#aaa; font-size:16px; max-width:500px; margin:0 auto;">
+            Watch anywhere. Cancel anytime. Pick the plan that works for you.
+        </p>
+    </div>
+
+    <!-- Current Subscription Banner -->
+    @if (currentSubscription != null && currentSubscription.IsActive)
+    {
+        <div style="max-width:800px; margin:0 auto 40px; padding:0 20px;">
+            <div style="background:rgba(229,9,20,0.15); border:1px solid #e50914;
+                            border-radius:8px; padding:16px 24px; display:flex;
+                            align-items:center; justify-content:space-between;">
+                <div>
+                    <span style="color:#e50914; font-weight:700;">Current Plan: </span>
+                    <span style="font-weight:700;">@currentSubscription.Plan</span>
+                    <span style="color:#aaa; font-size:13px; margin-left:12px;">
+                        Renews @currentSubscription.RenewalDate?.ToString("MMM dd, yyyy")
+                    </span>
+                </div>
+                <span style="background:#e50914; color:white; padding:4px 12px;
+                                 border-radius:4px; font-size:12px; font-weight:700;">ACTIVE</span>
+            </div>
+        </div>
+    }
+
+    <!-- Plans Grid -->
+    @if (plans == null)
+    {
+        <div style="display:flex; justify-content:center; padding:60px;">
+            <div class="spinner"></div>
+        </div>
+    }
+    else
+    {
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+                        gap:24px; max-width:1000px; margin:0 auto; padding:0 40px 80px;">
+            @foreach (var item in plans)
+            {
+                var isPopular = item.Name == "Standard";
+                var isCurrent = currentSubscription?.Plan == item.Name && currentSubscription.IsActive;
+
+                <div style="background:@(isPopular ? "#1a0000" : "#111");
+                                    border:2px solid @(isPopular ? "#e50914" : isCurrent ? "#00c864" : "#333");
+                                    border-radius:12px; padding:32px; position:relative;
+                                    transition:transform 0.2s, box-shadow 0.2s;"
+                     @onmouseover="() => hoveredPlan = item.Name"
+                     @onmouseout="() => hoveredPlan = null">
+
+                    @if (isPopular)
+                    {
+                        <div style="position:absolute; top:-14px; left:50%; transform:translateX(-50%);
+                                                background:#e50914; color:white; padding:4px 20px;
+                                                border-radius:20px; font-size:12px; font-weight:700;
+                                                white-space:nowrap;">
+                            MOST POPULAR
+                        </div>
+                    }
+
+                    @if (isCurrent)
+                    {
+                        <div style="position:absolute; top:-14px; right:20px;
+                                                background:#00c864; color:white; padding:4px 16px;
+                                                border-radius:20px; font-size:12px; font-weight:700;">
+                            CURRENT
+                        </div>
+                    }
+
+                    <h2 style="font-size:1.5rem; font-weight:900; margin-bottom:8px;">
+                        @item.Name
+                    </h2>
+                    <p style="color:#aaa; font-size:13px; margin-bottom:24px;">
+                        @item.Description
+                    </p>
+
+                    <div style="margin-bottom:28px;">
+                        <span style="font-size:2.5rem; font-weight:900; color:@(isPopular ? "#e50914" : "white");">
+                            R@(item.Price)
+                        </span>
+                        <span style="color:#aaa; font-size:14px;">/month</span>
+                    </div>
+
+                    <ul style="list-style:none; margin-bottom:32px; padding:0;">
+                        @foreach (var feature in item.Features)
+                        {
+                            <li style="display:flex; align-items:center; gap:10px;
+                                                   margin-bottom:12px; font-size:14px; color:#ccc;">
+                                <i class="fas fa-check" style="color:#00c864; font-size:12px;"></i>
+                                @feature
+                            </li>
+                        }
+                    </ul>
+
+                    @if (isCurrent)
+                    {
+                        <button class="btn-showmax" style="width:100%; opacity:0.6; cursor:not-allowed;" disabled>
+                            Current Plan
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn-showmax" style="width:100%; background:@(isPopular ? "#e50914" : "transparent");
+                                            border:2px solid @(isPopular ? "#e50914" : "white");"
+                                @onclick="() => Subscribe(item.Name)"
+                                disabled="@isProcessing">
+                            @if (isProcessing && processingPlan == item.Name)
+                            {
+                                <span>Processing...</span>
+                            }
+                            else
+                            {
+                                <span>Get @item.Name</span>
+                            }
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<SubscriptionPlanDto>? plans;
+    private UserSubscriptionDto? currentSubscription;
+    private bool isProcessing = false;
+    private string? processingPlan;
+    private string? hoveredPlan;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            plans = await ApiService.GetPlansAsync();
+
+            var token = await JS.InvokeAsync<string?>("localStorage.getItem", "token");
+            if (!string.IsNullOrEmpty(token))
+            {
+                currentSubscription = await ApiService.GetMySubscriptionAsync(token);
+            }
+        }
+        catch (Exception) { }
+    }
+
+    private async Task Subscribe(string planName)
+    {
+        var token = await JS.InvokeAsync<string?>("localStorage.getItem", "token");
+        if (string.IsNullOrEmpty(token))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        isProcessing = true;
+        processingPlan = planName;
+
+        try
+        {
+            var dto = new CreateCheckoutSessionDto
+            {
+                PlanName = planName,
+                SuccessUrl = $"{Nav.BaseUri}plans?success=true",
+                CancelUrl = $"{Nav.BaseUri}plans?cancelled=true"
+            };
+
+            var session = await ApiService.CreateCheckoutSessionAsync(dto);
+
+            if (session != null && !string.IsNullOrEmpty(session.Url))
+            {
+                await JS.InvokeVoidAsync("open", session.Url, "_self");
+            }
+        }
+        catch (Exception)
+        {
+            // Handle error
+        }
+
+        isProcessing = false;
+        processingPlan = null;
+    }
+}

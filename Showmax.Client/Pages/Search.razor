@@ -1,0 +1,193 @@
+﻿@page "/search"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+
+<NavBar />
+
+<div style="padding-top:80px; min-height:100vh; background:#0a0a0a;">
+
+    <div style="padding:40px 60px 20px;">
+        <h1 style="font-size:2rem; font-weight:900; margin-bottom:8px;">Search</h1>
+        <p style="color:#aaa;">Find your favourite movies and series</p>
+    </div>
+
+    <div style="padding:0 60px 40px;">
+        <div style="position:relative; max-width:600px;">
+            <i class="fas fa-search" style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:#666;"></i>
+            <input style="background:#1a1a1a; border:1px solid #333; border-radius:8px; color:white;
+                       padding:14px 16px 14px 44px; width:100%; font-size:16px;"
+                   placeholder="Search movies, series, genres..."
+                   @bind="searchQuery"
+                   @bind:event="oninput"
+                   @onkeyup="HandleSearch" />
+            @if (!string.IsNullOrEmpty(searchQuery))
+            {
+                <button @onclick="ClearSearch"
+                        style="position:absolute; right:16px; top:50%; transform:translateY(-50%);
+                                   background:none; border:none; color:#666; cursor:pointer; font-size:18px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div style="display:flex; justify-content:center; padding:60px;">
+            <div class="spinner"></div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(searchQuery) && results != null)
+    {
+        <div style="padding:0 60px;">
+            <h2 class="section-title">
+                @if (results.Any())
+                {
+                    <span>@results.Count result@(results.Count != 1 ? "s" : "") for "@searchQuery"</span>
+                }
+                else
+                {
+                    <span>No results for "@searchQuery"</span>
+                }
+            </h2>
+
+            @if (results.Any())
+            {
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:16px;">
+                    @foreach (var item in results)
+                    {
+                        <div class="content-card" @onclick="() => GoToContent(item.Id)">
+                            <span class="card-badge">@item.Type.ToUpper()</span>
+                            <img src="@item.ThumbnailUrl" alt="@item.Title" />
+                            <div class="card-info">
+                                <div class="card-title">@item.Title</div>
+                                <div class="card-meta">@item.ReleaseYear • @item.Genre • @item.Rating</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="no-content">
+                    <i class="fas fa-search" style="font-size:3rem; color:#333; margin-bottom:16px;"></i>
+                    <p style="color:#666; font-size:16px;">No results found for "@searchQuery"</p>
+                    <p style="color:#444; font-size:14px; margin-top:8px;">Try a different title or genre</p>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div style="padding:0 60px;">
+            <h2 class="section-title">Browse by Genre</h2>
+            <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:48px;">
+                @foreach (var genre in genres)
+                {
+                    <button class="btn-outline" style="padding:10px 24px; font-size:14px;"
+                            @onclick="() => SearchByGenre(genre)">
+                        @genre
+                    </button>
+                }
+            </div>
+
+            <h2 class="section-title">All Content</h2>
+            @if (allContent == null)
+            {
+                <p style="color:#666;">Loading...</p>
+            }
+            else
+            {
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:16px;">
+                    @foreach (var item in allContent)
+                    {
+                        <div class="content-card" @onclick="() => GoToContent(item.Id)">
+                            <span class="card-badge">@item.Type.ToUpper()</span>
+                            <img src="@item.ThumbnailUrl" alt="@item.Title" />
+                            <div class="card-info">
+                                <div class="card-title">@item.Title</div>
+                                <div class="card-meta">@item.ReleaseYear • @item.Genre • @item.Rating</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string searchQuery = "";
+    private List<ContentDto>? results;
+    private List<ContentDto>? allContent;
+    private bool isLoading = false;
+
+    private List<string> genres = new()
+    {
+        "Action", "Drama", "Comedy", "Thriller",
+        "Horror", "Romance", "Documentary", "Animation"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            allContent = await ApiService.GetAllContentAsync();
+        }
+        catch (Exception) { }
+    }
+
+    private async Task HandleSearch(KeyboardEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            results = null;
+            return;
+        }
+
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            results = await ApiService.SearchContentAsync(searchQuery);
+        }
+        catch (Exception)
+        {
+            results = new List<ContentDto>();
+        }
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task SearchByGenre(string genre)
+    {
+        searchQuery = genre;
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            results = await ApiService.GetContentByGenreAsync(genre);
+        }
+        catch (Exception)
+        {
+            results = new List<ContentDto>();
+        }
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = "";
+        results = null;
+    }
+
+    private void GoToContent(int id)
+    {
+        Nav.NavigateTo($"/content/{id}");
+    }
+}

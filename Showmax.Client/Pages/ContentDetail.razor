@@ -1,0 +1,200 @@
+﻿@page "/content/{Id:int}"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<NavBar />
+
+@if (isLoading)
+{
+    <div style="display:flex; justify-content:center; align-items:center; height:100vh;">
+        <div class="spinner"></div>
+    </div>
+}
+else if (content == null)
+{
+    <div class="no-content" style="margin-top:100px;">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>Content not found.</p>
+        <a href="/" class="btn-showmax" style="margin-top:16px;">Go Home</a>
+    </div>
+}
+else
+{
+    <div style="position:relative; height:70vh; background: linear-gradient(to right, rgba(0,0,0,0.95) 40%, rgba(0,0,0,0.4)),
+                    url('@content.ThumbnailUrl') center/cover no-repeat; margin-bottom:0;">
+        <div style="position:absolute; bottom:40px; left:60px; max-width:600px;">
+            <span class="hero-badge">@content.Type.ToUpper()</span>
+            <h1 style="font-size:3rem; font-weight:900; margin:12px 0;">@content.Title</h1>
+
+            <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+                <span style="color:#aaa; font-size:14px;">@content.ReleaseYear</span>
+                <span style="color:#aaa;">•</span>
+                <span style="color:#aaa; font-size:14px;">@content.Genre</span>
+                <span style="color:#aaa;">•</span>
+                <span style="background:#333; padding:2px 10px; border-radius:4px; font-size:13px;">@content.Rating</span>
+                <span style="color:#aaa;">•</span>
+                <span style="color:#aaa; font-size:14px;">@content.Language</span>
+            </div>
+
+            <p style="color:#ccc; font-size:15px; line-height:1.7; margin-bottom:28px;">
+                @content.Synopsis
+            </p>
+
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                @if (!string.IsNullOrEmpty(content.VideoUrl))
+                {
+                    @if (isLoggedIn)
+                    {
+                        <a href="/watch/@content.Id" class="btn-showmax">
+                            <i class="fas fa-play"></i> Watch Now
+                        </a>
+                    }
+                    else
+                    {
+                        <button class="btn-showmax" @onclick="RedirectToLogin">
+                            <i class="fas fa-play"></i> Watch Now
+                        </button>
+                    }
+                }
+                else
+                {
+                    <button class="btn-showmax" disabled style="opacity:0.5; cursor:not-allowed;">
+                        <i class="fas fa-play"></i> Coming Soon
+                    </button>
+                }
+                <button class="btn-outline" @onclick="ToggleWatchlist">
+                    @if (isInWatchlist)
+                    {
+                        <span><i class="fas fa-check"></i> In Watchlist</span>
+                    }
+                    else
+                    {
+                        <span><i class="fas fa-plus"></i> Add to Watchlist</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div style="padding:40px 60px; background:#0a0a0a;">
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:24px; margin-bottom:48px;">
+            <div style="background:#1a1a1a; padding:20px; border-radius:8px; border-left:4px solid #e50914;">
+                <div style="color:#aaa; font-size:12px; text-transform:uppercase; margin-bottom:6px;">Type</div>
+                <div style="font-size:16px; font-weight:700;">@content.Type</div>
+            </div>
+            <div style="background:#1a1a1a; padding:20px; border-radius:8px; border-left:4px solid #e50914;">
+                <div style="color:#aaa; font-size:12px; text-transform:uppercase; margin-bottom:6px;">Genre</div>
+                <div style="font-size:16px; font-weight:700;">@content.Genre</div>
+            </div>
+            <div style="background:#1a1a1a; padding:20px; border-radius:8px; border-left:4px solid #e50914;">
+                <div style="color:#aaa; font-size:12px; text-transform:uppercase; margin-bottom:6px;">Language</div>
+                <div style="font-size:16px; font-weight:700;">@content.Language</div>
+            </div>
+            <div style="background:#1a1a1a; padding:20px; border-radius:8px; border-left:4px solid #e50914;">
+                <div style="color:#aaa; font-size:12px; text-transform:uppercase; margin-bottom:6px;">Rating</div>
+                <div style="font-size:16px; font-weight:700;">@content.Rating</div>
+            </div>
+        </div>
+
+        <h2 class="section-title">More Like This</h2>
+        @if (relatedContent == null || !relatedContent.Any())
+        {
+            <p style="color:#666;">No related content found.</p>
+        }
+        else
+        {
+            <div class="content-row">
+                @foreach (var item in relatedContent)
+                {
+                    <div class="content-card" @onclick="() => GoToContent(item.Id)">
+                        <span class="card-badge">@item.Type.ToUpper()</span>
+                        <img src="@item.ThumbnailUrl" alt="@item.Title" />
+                        <div class="card-info">
+                            <div class="card-title">@item.Title</div>
+                            <div class="card-meta">@item.ReleaseYear • @item.Genre • @item.Rating</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ContentDto? content;
+    private List<ContentDto>? relatedContent;
+    private bool isLoading = true;
+    private bool isInWatchlist = false;
+    private bool isLoggedIn = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        try
+        {
+            content = await ApiService.GetContentByIdAsync(Id);
+
+            if (content != null)
+            {
+                var all = await ApiService.GetContentByGenreAsync(content.Genre);
+                relatedContent = all?
+                    .Where(c => c.Id != Id)
+                    .Take(6)
+                    .ToList();
+
+                // Check login status
+                var token = await JS.InvokeAsync<string?>("localStorage.getItem", "token");
+                isLoggedIn = !string.IsNullOrEmpty(token);
+
+                // Check if in watchlist
+                if (!string.IsNullOrEmpty(token))
+                {
+                    isInWatchlist = await ApiService.CheckWatchlistAsync(Id, token);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            content = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void RedirectToLogin()
+    {
+        Nav.NavigateTo($"/login?redirect=/watch/{Id}");
+    }
+
+    private async Task ToggleWatchlist()
+    {
+        var token = await JS.InvokeAsync<string?>("localStorage.getItem", "token");
+        if (string.IsNullOrEmpty(token))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        if (isInWatchlist)
+        {
+            var success = await ApiService.RemoveFromWatchlistAsync(Id, token);
+            if (success) isInWatchlist = false;
+        }
+        else
+        {
+            var success = await ApiService.AddToWatchlistAsync(Id, token);
+            if (success) isInWatchlist = true;
+        }
+    }
+
+    private void GoToContent(int id)
+    {
+        Nav.NavigateTo($"/content/{id}", forceLoad: true);
+    }
+}

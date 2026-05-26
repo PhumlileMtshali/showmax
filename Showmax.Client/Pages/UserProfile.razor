@@ -1,0 +1,327 @@
+﻿@page "/profile"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<NavBar />
+
+<div style="padding-top:80px; min-height:100vh; background:#0a0a0a;">
+
+    @if (!isLoggedIn)
+    {
+        <div class="no-content" style="margin-top:100px;">
+            <i class="fas fa-lock" style="font-size:3rem; color:#e50914; margin-bottom:16px;"></i>
+            <p style="margin-bottom:16px;">Sign in to view your profile</p>
+            <a href="/login" class="btn-showmax">Sign In</a>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div style="display:flex; justify-content:center; padding:60px;">
+            <div class="spinner"></div>
+        </div>
+    }
+    else if (profile != null)
+    {
+        <div style="max-width:800px; margin:0 auto; padding:40px;">
+
+            <!-- Profile Header -->
+            <div style="background:#111; border-radius:12px; padding:40px;
+                            display:flex; align-items:center; gap:32px; margin-bottom:24px;
+                            flex-wrap:wrap;">
+                <div style="position:relative;">
+                    @if (!string.IsNullOrEmpty(profile.AvatarUrl))
+                    {
+                        <img src="@profile.AvatarUrl"
+                             style="width:100px; height:100px; border-radius:50%;
+                                            object-fit:cover; border:3px solid #e50914;" />
+                    }
+                    else
+                    {
+                        <div style="width:100px; height:100px; border-radius:50%;
+                                            background:#333; display:flex; align-items:center;
+                                            justify-content:center; border:3px solid #e50914;">
+                            <i class="fas fa-user" style="font-size:2.5rem; color:#666;"></i>
+                        </div>
+                    }
+                </div>
+
+                <div style="flex:1;">
+                    <h1 style="font-size:1.8rem; font-weight:900; margin-bottom:4px;">
+                        @profile.FullName
+                    </h1>
+                    <p style="color:#aaa; margin-bottom:8px;">@profile.Email</p>
+                    <p style="color:#666; font-size:13px;">
+                        Member since @profile.CreatedAt.ToString("MMMM yyyy")
+                    </p>
+                </div>
+
+                <div style="text-align:right;">
+                    @if (profile.IsSubscriptionActive)
+                    {
+                        <div style="background:rgba(0,200,100,0.15); border:1px solid #00c864;
+                                            border-radius:8px; padding:12px 20px; margin-bottom:8px;">
+                            <div style="color:#00c864; font-weight:700; font-size:14px;">
+                                @profile.SubscriptionPlan
+                            </div>
+                            <div style="color:#aaa; font-size:12px;">Active Subscription</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="background:rgba(229,9,20,0.15); border:1px solid #e50914;
+                                            border-radius:8px; padding:12px 20px; margin-bottom:8px;">
+                            <div style="color:#e50914; font-weight:700; font-size:14px;">No Plan</div>
+                            <div style="color:#aaa; font-size:12px;">Not subscribed</div>
+                        </div>
+                        <a href="/plans" class="btn-showmax" style="font-size:13px; padding:8px 20px;">
+                            Subscribe Now
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+                <div style="background:#111; border-radius:8px; padding:24px;
+                                border-left:4px solid #e50914; text-align:center;">
+                    <div style="font-size:2.5rem; font-weight:900; color:#e50914;">
+                        @profile.WatchlistCount
+                    </div>
+                    <div style="color:#aaa; font-size:14px; margin-top:4px;">Items in Watchlist</div>
+                    <a href="/watchlist" style="color:#e50914; font-size:13px; margin-top:8px;
+                                                    display:inline-block; text-decoration:none;">
+                        View Watchlist →
+                    </a>
+                </div>
+                <div style="background:#111; border-radius:8px; padding:24px;
+                                border-left:4px solid #e50914; text-align:center;">
+                    <div style="font-size:2.5rem; font-weight:900; color:#e50914;">
+                        @profile.SubscriptionPlan
+                    </div>
+                    <div style="color:#aaa; font-size:14px; margin-top:4px;">Current Plan</div>
+                    <a href="/plans" style="color:#e50914; font-size:13px; margin-top:8px;
+                                               display:inline-block; text-decoration:none;">
+                        Manage Plan →
+                    </a>
+                </div>
+            </div>
+
+            <!-- Edit Profile -->
+            <div style="background:#111; border-radius:12px; padding:32px; margin-bottom:24px;">
+                <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:24px;">
+                    Edit Profile
+                </h2>
+
+                @if (!string.IsNullOrEmpty(updateSuccess))
+                {
+                    <div class="success-message">@updateSuccess</div>
+                }
+                @if (!string.IsNullOrEmpty(updateError))
+                {
+                    <div class="error-message">@updateError</div>
+                }
+
+                <label class="form-label-showmax">Full Name</label>
+                <input class="form-control-showmax" placeholder="Your full name"
+                       @bind="editName" style="margin-bottom:16px;" />
+
+                <label class="form-label-showmax">Avatar URL (optional)</label>
+                <input class="form-control-showmax" placeholder="https://..."
+                       @bind="editAvatarUrl" style="margin-bottom:24px;" />
+
+                <button class="btn-showmax" @onclick="UpdateProfile" disabled="@isUpdating">
+                    @if (isUpdating)
+                    {
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <span>Save Changes</span>
+                    }
+                </button>
+            </div>
+
+            <!-- Change Password -->
+            <div style="background:#111; border-radius:12px; padding:32px; margin-bottom:24px;">
+                <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:24px;">
+                    Change Password
+                </h2>
+
+                @if (!string.IsNullOrEmpty(passwordSuccess))
+                {
+                    <div class="success-message">@passwordSuccess</div>
+                }
+                @if (!string.IsNullOrEmpty(passwordError))
+                {
+                    <div class="error-message">@passwordError</div>
+                }
+
+                <label class="form-label-showmax">Current Password</label>
+                <input class="form-control-showmax" type="password"
+                       placeholder="Current password"
+                       @bind="currentPassword" style="margin-bottom:16px;" />
+
+                <label class="form-label-showmax">New Password</label>
+                <input class="form-control-showmax" type="password"
+                       placeholder="New password (min 6 characters)"
+                       @bind="newPassword" style="margin-bottom:24px;" />
+
+                <button class="btn-showmax" @onclick="ChangePassword" disabled="@isChangingPassword">
+                    @if (isChangingPassword)
+                    {
+                        <span>Changing...</span>
+                    }
+                    else
+                    {
+                        <span>Change Password</span>
+                    }
+                </button>
+            </div>
+
+            <!-- Danger Zone -->
+            <div style="background:#111; border-radius:12px; padding:32px;
+                            border:1px solid #330000;">
+                <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:8px; color:#e50914;">
+                    Account Actions
+                </h2>
+                <p style="color:#aaa; font-size:14px; margin-bottom:24px;">
+                    Manage your account settings
+                </p>
+                <button class="btn-outline" @onclick="Logout"
+                        style="border-color:#e50914; color:#e50914;">
+                    <i class="fas fa-sign-out-alt"></i> Sign Out
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private UserProfileDto? profile;
+    private bool isLoading = true;
+    private bool isLoggedIn = false;
+    private string token = "";
+
+    private string editName = "";
+    private string editAvatarUrl = "";
+    private string updateSuccess = "";
+    private string updateError = "";
+    private bool isUpdating = false;
+
+    private string currentPassword = "";
+    private string newPassword = "";
+    private string passwordSuccess = "";
+    private string passwordError = "";
+    private bool isChangingPassword = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        token = await JS.InvokeAsync<string?>("localStorage.getItem", "token") ?? "";
+        isLoggedIn = !string.IsNullOrEmpty(token);
+
+        if (isLoggedIn)
+        {
+            try
+            {
+                profile = await ApiService.GetProfileAsync(token);
+                if (profile != null)
+                {
+                    editName = profile.FullName;
+                    editAvatarUrl = profile.AvatarUrl ?? "";
+                }
+            }
+            catch (Exception) { }
+        }
+
+        isLoading = false;
+    }
+
+    private async Task UpdateProfile()
+    {
+        updateSuccess = "";
+        updateError = "";
+
+        if (string.IsNullOrEmpty(editName))
+        {
+            updateError = "Full name is required.";
+            return;
+        }
+
+        isUpdating = true;
+
+        var dto = new UpdateProfileDto
+        {
+            FullName = editName,
+            AvatarUrl = editAvatarUrl
+        };
+
+        var success = await ApiService.UpdateProfileAsync(dto, token);
+
+        if (success)
+        {
+            updateSuccess = "Profile updated successfully!";
+            if (profile != null)
+            {
+                profile.FullName = editName;
+                profile.AvatarUrl = editAvatarUrl;
+            }
+            await JS.InvokeVoidAsync("localStorage.setItem", "fullName", editName);
+        }
+        else
+        {
+            updateError = "Failed to update profile. Please try again.";
+        }
+
+        isUpdating = false;
+    }
+
+    private async Task ChangePassword()
+    {
+        passwordSuccess = "";
+        passwordError = "";
+
+        if (string.IsNullOrEmpty(currentPassword) || string.IsNullOrEmpty(newPassword))
+        {
+            passwordError = "Both fields are required.";
+            return;
+        }
+
+        if (newPassword.Length < 6)
+        {
+            passwordError = "New password must be at least 6 characters.";
+            return;
+        }
+
+        isChangingPassword = true;
+
+        var dto = new ChangePasswordDto
+        {
+            CurrentPassword = currentPassword,
+            NewPassword = newPassword
+        };
+
+        var success = await ApiService.ChangePasswordAsync(dto, token);
+
+        if (success)
+        {
+            passwordSuccess = "Password changed successfully!";
+            currentPassword = "";
+            newPassword = "";
+        }
+        else
+        {
+            passwordError = "Failed to change password. Check your current password and try again.";
+        }
+
+        isChangingPassword = false;
+    }
+
+    private async Task Logout()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "token");
+        await JS.InvokeVoidAsync("localStorage.removeItem", "fullName");
+        await JS.InvokeVoidAsync("localStorage.removeItem", "role");
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+}

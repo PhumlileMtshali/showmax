@@ -1,0 +1,233 @@
+﻿@page "/watch/{Id:int}"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IDisposable
+
+<NavBar />
+
+@if (isLoading)
+{
+    <div style="display:flex; justify-content:center; align-items:center;
+                    height:100vh; background:#000;">
+        <div class="spinner"></div>
+    </div>
+}
+else if (content == null)
+{
+    <div class="no-content" style="margin-top:100px;">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>Content not found.</p>
+        <a href="/" class="btn-showmax" style="margin-top:16px;">Go Home</a>
+    </div>
+}
+else if (string.IsNullOrEmpty(content.VideoUrl))
+{
+    <div style="display:flex; flex-direction:column; align-items:center;
+                    justify-content:center; height:100vh; background:#000;">
+        <i class="fas fa-film" style="font-size:4rem; color:#333; margin-bottom:24px;"></i>
+        <h2 style="font-size:1.5rem; font-weight:700; margin-bottom:8px;">Coming Soon</h2>
+        <p style="color:#aaa; margin-bottom:24px;">Video not available yet for @content.Title</p>
+        <a href="/content/@content.Id" class="btn-outline">Go Back</a>
+    </div>
+}
+else
+{
+    <div style="background:#000; width:100vw; min-height:100vh; padding-top:70px;">
+
+        <!-- Full Width Video Player -->
+        <div style="width:100%; background:#000; position:relative;">
+            <video id="showmax-player"
+                   style="width:100%; height:calc(100vh - 70px); object-fit:contain;
+                              background:#000; display:block;"
+                   controls
+                   preload="auto"
+                   @ref="videoRef">
+                <source src="@content.VideoUrl" type="video/mp4" />
+                Your browser does not support the video tag.
+            </video>
+
+            @if (!hasStarted)
+            {
+                <div style="position:absolute; inset:0; display:flex; flex-direction:column;
+                                    align-items:center; justify-content:center;
+                                    background:rgba(0,0,0,0.5); cursor:pointer;"
+                     @onclick="StartVideo">
+                    <div style="width:80px; height:80px; background:#e50914; border-radius:50%;
+                                        display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-play" style="font-size:2rem; color:white; margin-left:6px;"></i>
+                    </div>
+                    <p style="color:white; margin-top:16px; font-size:16px; font-weight:600;">
+                        Click to play @content.Title
+                    </p>
+                </div>
+            }
+        </div>
+
+        <!-- Video Info Below Player -->
+        <div style="max-width:1200px; margin:0 auto; padding:32px 40px; background:#0a0a0a;">
+            <div style="display:flex; justify-content:space-between;
+                            align-items:flex-start; flex-wrap:wrap; gap:16px;">
+                <div>
+                    <div style="display:flex; align-items:center; gap:12px;
+                                    margin-bottom:8px; flex-wrap:wrap;">
+                        <span class="hero-badge">@content.Type.ToUpper()</span>
+                        <span style="color:#aaa; font-size:14px;">@content.ReleaseYear</span>
+                        <span style="color:#aaa;">•</span>
+                        <span style="color:#aaa; font-size:14px;">@content.Genre</span>
+                        <span style="color:#aaa;">•</span>
+                        <span style="background:#333; padding:2px 10px;
+                                         border-radius:4px; font-size:13px;">@content.Rating</span>
+                    </div>
+                    <h1 style="font-size:2rem; font-weight:900; margin-bottom:8px;">
+                        @content.Title
+                    </h1>
+                    <p style="color:#aaa; font-size:14px; max-width:700px; line-height:1.7;">
+                        @content.Synopsis
+                    </p>
+                </div>
+
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                    <a href="/content/@content.Id" class="btn-outline" style="padding:10px 24px;">
+                        <i class="fas fa-info-circle"></i> More Info
+                    </a>
+                    <button class="btn-showmax" style="padding:10px 24px;"
+                            @onclick="ToggleWatchlist">
+                        @if (isInWatchlist)
+                        {
+                            <span><i class="fas fa-check"></i> In Watchlist</span>
+                        }
+                        else
+                        {
+                            <span><i class="fas fa-plus"></i> Add to Watchlist</span>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            <!-- Related Content -->
+            @if (relatedContent != null && relatedContent.Any())
+            {
+                <div style="margin-top:48px;">
+                    <h2 class="section-title">More Like This</h2>
+                    <div class="content-row">
+                        @foreach (var item in relatedContent)
+                        {
+                            <div class="content-card" @onclick="() => GoToWatch(item.Id)">
+                                <span class="card-badge">@item.Type.ToUpper()</span>
+                                <img src="@item.ThumbnailUrl" alt="@item.Title" />
+                                <div class="card-info">
+                                    <div class="card-title">@item.Title</div>
+                                    <div class="card-meta">@item.ReleaseYear • @item.Genre</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ContentDto? content;
+    private List<ContentDto>? relatedContent;
+    private bool isLoading = true;
+    private bool isInWatchlist = false;
+    private bool hasStarted = false;
+    private ElementReference videoRef;
+    private System.Timers.Timer? saveTimer;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        hasStarted = false;
+        try
+        {
+            content = await ApiService.GetContentByIdAsync(Id);
+            if (content != null)
+            {
+                var all = await ApiService.GetContentByGenreAsync(content.Genre);
+                relatedContent = all?.Where(c => c.Id != Id).Take(6).ToList();
+            }
+        }
+        catch (Exception) { }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && content != null && !string.IsNullOrEmpty(content.VideoUrl))
+        {
+            try
+            {
+                // Restore saved position
+                var savedPosition = await JS.InvokeAsync<string?>(
+                    "localStorage.getItem", $"progress_{Id}");
+                if (!string.IsNullOrEmpty(savedPosition) &&
+                    double.TryParse(savedPosition, out double position) && position > 0)
+                {
+                    await JS.InvokeVoidAsync("eval",
+                        $"setTimeout(function(){{ var v = document.getElementById('showmax-player'); if(v) v.currentTime = {position}; }}, 1000);");
+                }
+
+                // Auto save progress every 15 seconds
+                saveTimer = new System.Timers.Timer(15000);
+                saveTimer.Elapsed += async (s, e) =>
+                {
+                    try
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            var time = await JS.InvokeAsync<double>("eval",
+                                "document.getElementById('showmax-player')?.currentTime || 0");
+                            if (time > 0)
+                            {
+                                await JS.InvokeVoidAsync("localStorage.setItem",
+                                    $"progress_{Id}", time.ToString());
+                            }
+                        });
+                    }
+                    catch { }
+                };
+                saveTimer.Start();
+            }
+            catch { }
+        }
+    }
+
+    private async Task StartVideo()
+    {
+        hasStarted = true;
+        StateHasChanged();
+        await JS.InvokeVoidAsync("eval",
+            "document.getElementById('showmax-player').play();");
+    }
+
+    private async Task ToggleWatchlist()
+    {
+        var token = await JS.InvokeAsync<string?>("localStorage.getItem", "token");
+        if (string.IsNullOrEmpty(token))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+        isInWatchlist = !isInWatchlist;
+    }
+
+    private void GoToWatch(int id)
+    {
+        Nav.NavigateTo($"/watch/{id}", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        saveTimer?.Stop();
+        saveTimer?.Dispose();
+    }
+}

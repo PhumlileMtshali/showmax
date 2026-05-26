@@ -1,0 +1,6 @@
+@Showmax.Server_HostAddress = http://localhost:5053
+
+GET {{Showmax.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

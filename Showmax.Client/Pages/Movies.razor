@@ -1,0 +1,62 @@
+﻿@page "/movies"
+@inject ApiService ApiService
+@inject NavigationManager Nav
+
+<NavBar />
+
+<div style="padding-top:80px; min-height:100vh; background:#0a0a0a;">
+    <div style="padding:40px 60px 20px;">
+        <h1 style="font-size:2rem; font-weight:900; margin-bottom:8px;">Movies</h1>
+        <p style="color:#aaa;">All available movies on Showmax</p>
+    </div>
+
+    <div style="padding:0 60px;">
+        @if (movies == null)
+        {
+            <div style="display:flex; justify-content:center; padding:60px;">
+                <div class="spinner"></div>
+            </div>
+        }
+        else if (!movies.Any())
+        {
+            <div class="no-content">
+                <i class="fas fa-film"></i>
+                <p>No movies available yet.</p>
+            </div>
+        }
+        else
+        {
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:16px;">
+                @foreach (var item in movies)
+                {
+                    <div class="content-card" @onclick="() => GoToContent(item.Id)">
+                        <span class="card-badge">MOVIE</span>
+                        <img src="@item.ThumbnailUrl" alt="@item.Title" />
+                        <div class="card-info">
+                            <div class="card-title">@item.Title</div>
+                            <div class="card-meta">@item.ReleaseYear • @item.Genre • @item.Rating</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<ContentDto>? movies;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            movies = await ApiService.GetContentByTypeAsync("Movie");
+        }
+        catch (Exception) { }
+    }
+
+    private void GoToContent(int id)
+    {
+        Nav.NavigateTo($"/content/{id}");
+    }
+}
